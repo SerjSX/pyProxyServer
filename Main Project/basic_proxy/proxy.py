@@ -1,10 +1,14 @@
 from socket import *
 from http_parser import parse_http_request
 from logger import log_request, log_response
+import threading
+from proxy_cache import ProxyCache
 
 #standard buffer size 4KB, good enough for packets+memory (could be more or less)
 BUFFER_SIZE = 4096
 PROXY_PORT = 10000
+
+cache = ProxyCache()
 
 def handle_client(client_socket, client_address):
     try:
@@ -27,6 +31,17 @@ def handle_client(client_socket, client_address):
         #assign each of the returned parsed values to a variable
         method, host, port, path, headers = parsed
 
+        # Forms the url to check if it exists in cache already, and to use it later to add to cache.
+        cache_key = host + path
+
+        # Getting the cache based on the key variable; if none exists then it returns None
+        cache_result = cache.get(cache_key)
+        if (cache_result):
+            # If it found stored in cache, then it sends the cached response and goes out of the method.
+            print(f"Found it in cache: {cache_key}")
+            client_socket.sendall(cache_result)
+            return
+
         #call logger request method
         log_request(client_address, method, path, host, headers)
 
@@ -42,6 +57,9 @@ def handle_client(client_socket, client_address):
         #send request to external URL
         server_socket.send(forward_request.encode())
 
+        # This variable is used to store the entire message for caching later.
+        cache_response = b""
+
         #receive response from external URL and forward back to client
         while True:
             #receive next packet from external URL
@@ -52,6 +70,11 @@ def handle_client(client_socket, client_address):
                 break
             #send current packet back to client
             client_socket.send(data)
+            cache_response += data
+
+        # Adds the response received to cache
+        if (cache_response):
+            cache.set(cache_key, cache_response)
 
         #call logger response method
         log_response()
@@ -83,7 +106,14 @@ def start_proxy():
         #client_socket=proxy's communication link to client
         #client_address=IP + Port
         client_socket, client_address = server_socket.accept()
-        handle_client(client_socket, client_address)
+
+        # Opens a new thread to handle the client's request 
+        t = threading.Thread(
+            target=handle_client,
+            args=(client_socket, client_address)
+        )
+        t.start()
+        #handle_client(client_socket, client_address)
 
 
 if __name__ == "__main__":
