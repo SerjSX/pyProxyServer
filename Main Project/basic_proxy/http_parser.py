@@ -45,3 +45,22 @@ def parse_http_request(request):
 
     except:
         return None
+
+#this is a method to get the header line of the response
+def parse_response_status_line(response_bytes):
+    try:
+        #store the response in a variable
+        header_text = response_bytes.decode(errors="ignore")
+        #get just the first header line of the response
+        first_line = header_text.split("\r\n")[0]
+        #split twice to get status code, status and size of response individually
+        parts = first_line.split(" ", 2)
+
+        if len(parts) >= 2:
+            status_code = parts[1]
+            status = parts[2] if len(parts) > 2 else ""
+            return status_code, status
+    except:
+        pass
+
+    return "Unknown", ""
