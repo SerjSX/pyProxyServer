@@ -3,7 +3,10 @@ from socket import *
 from http_parser import parse_http_request, parse_response_status_line
 from logger import (log_request, log_response, log_request_received,
                     log_rejected_method, log_total_time, log_request_forwarded,
-                    log_response_received, log_response_sent_back)
+                    log_response_received, log_response_sent_back,
+                    log_blocked_host, log_blocked_address)
+from filtering import (is_host_blocked, is_address_blocked)
+from response_text_util import (format_forbidden)
 import threading
 from proxy_cache import ProxyCache
 import time
@@ -35,10 +38,18 @@ def handle_client(client_socket, client_address):
             client_socket.send(b"HTTP/1.1 400 Bad Request\r\n\r\n")
             return
 
-        log_request_received()
-
         #assign each of the returned parsed values to a variable
         method, host, port, path, headers = parsed
+
+        log_request_received(client_address, host)
+
+        # checking if the host that the client is trying to access to is blacklisted or not.
+        # If it is, we return a 403 HTTP message and log the attempt to request the host.
+        if is_host_blocked(host):
+            client_socket.sendall(format_forbidden(b"Access denied by proxy. You cannot request this host as its blacklisted.\r\n"))
+            log_blocked_host()
+            return
+
 
         #Checking if the method is not GET first, then sending a proper error response
         if method != "GET":
@@ -50,23 +61,19 @@ def handle_client(client_socket, client_address):
         cache_key = host + path
 
         # call logger request method
-        log_request(client_address, method, path, host, headers)
+        log_request(method, path, host, headers)
 
         # Getting the cache based on the key variable; if none exists then it returns None
         cache_result = cache.get(cache_key)
         if cache_result:
             # If it's found stored in cache, then it sends back the cached response to the client
-            print(f"HIT: {cache_key}")
             client_socket.sendall(cache_result)
             status_code, status = parse_response_status_line(cache_result)
-            log_response(status_code, status, len(cache_result))
+            log_response(status_code, status, len(cache_result), "hit")
             log_total_time(start_time)
             return
 
-        else:
-            print(f"MISS: {cache_key}. Fetching from server...")
-
-        #connect to target server as proxy (proxy becomes client here)
+        #connect to target server as proxy (proxy becomes client here) since it didn't get a cache hit
         server_socket = socket(AF_INET, SOCK_STREAM)
         #use request's external host name and port
         server_socket.connect((host, port))
@@ -94,9 +101,10 @@ def handle_client(client_socket, client_address):
             if len(data) == 0:
                 break
 
-            log_response_received()
-
             total_size += len(data)
+
+            # Logging the received response batch
+            log_response_received(total_size)
 
             try:
                 #send current packet back to client
@@ -116,7 +124,7 @@ def handle_client(client_socket, client_address):
         status_code, status = parse_response_status_line(cache_response)
 
         #call logger response method
-        log_response(status_code, status, total_size)
+        log_response(status_code, status, total_size, "miss")
 
         #close current connection after response has been fully received
         server_socket.close()
@@ -138,10 +146,16 @@ def handle_client(client_socket, client_address):
 def start_proxy():
     # AF_INET=ipv4 and SOCK_STREAM=TCP (TCP required for HTTP)
     server_socket = socket(AF_INET, SOCK_STREAM)
+
+    # Resets the TIME_WAIT after stopping the server so it immediately starts again.
+    server_socket.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
+
     # ''=listen to localhost
     server_socket.bind(('', PROXY_PORT))
+
     # 5 means max queued connections are 5, can be more or less
     server_socket.listen(5)
+
 
     print(f"Proxy running on port {PROXY_PORT}...")
 
@@ -151,13 +165,20 @@ def start_proxy():
         #client_address=IP + Port
         client_socket, client_address = server_socket.accept()
 
+        # Checking if the client's IP address is blacklisted or no, if it is then it does not proceed with the request.
+        # Sends a 403 HTTP respone back and closes the connection
+        if is_address_blocked(client_address[0]):
+            client_socket.sendall(format_forbidden(b"Access denied by proxy. Your address is blacklisted, contact the developers if needed.\r\n"))
+            log_blocked_address(client_address[0])
+            client_socket.close()
+            continue
+
         # Opens a new thread to handle the client's request 
         t = threading.Thread(
             target=handle_client,
             args=(client_socket, client_address)
         )
         t.start()
-        #handle_client(client_socket, client_address)
 
 
 if __name__ == "__main__":

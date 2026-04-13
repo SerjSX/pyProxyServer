@@ -1,10 +1,8 @@
 import datetime
 import time
 
-def log_request(client_address, method, path, host, headers):
+def log_request(method, path, host, headers):
     print("---- REQUEST ----")
-    #client IP and port
-    print(f"Client: {client_address[0]}:{client_address[1]}")
     #show HTTP request line
     print(f"{method} {path} HTTP/1.1")
     #host name
@@ -19,17 +17,18 @@ def log_request(client_address, method, path, host, headers):
     print("-----------------\n")
 
 
-def log_response(status_code, status, size):
-    print("\n---- RESPONSE ----")
+def log_response(status_code, status, size, type):
+    print(f"\n---- RESPONSE ----")
     print(f"Status: {status_code} {status}")
     print(f"Size: {size} bytes")
     #show response timestamp
     print(f"Time: {datetime.datetime.now()}")
+    print(f"Response Type: {type.upper()}")
     print("------------------\n")
 
-def log_request_received():
+def log_request_received(client_address, host):
     # Log that the request was successfully received with a timestamp
-    print(f"[{datetime.datetime.now()}] Request received\n")
+    print(f"\n[{datetime.datetime.now()}] Request received from client {client_address[0]}:{client_address[1]} to host: {host}\n")
 
 def log_rejected_method(method):
     # If method is different from GET
@@ -43,10 +42,16 @@ def log_request_forwarded(host):
     # Log that we are now sending request to external URL with timestamp
     print(f"[{datetime.datetime.now()}] Request forwarded to {host}")
 
-def log_response_received():
+def log_response_received(current_size):
     # Log that response successfully received from external URL with timestamp
-    print(f"[{datetime.datetime.now()}] Response received from server")
+    print(f"[{datetime.datetime.now()}] Response received from server; current size = {current_size}B")
 
 def log_response_sent_back():
     # Log that we successfully sent response back to client with timestamp
     print(f"[{datetime.datetime.now()}] Response sent to client")
+
+def log_blocked_host():
+    print(f"[{datetime.datetime.now()}] Blocked the request attempt since it's blacklisted.")
+
+def log_blocked_address(client_ip):
+    print(f"[{datetime.datetime.now()}] Blocked the client from requesting anything since their address is blacklisted: {client_ip}")

@@ -34,7 +34,7 @@ class ProxyCache:
             entry = self.store[url]
 
             # Check expiration, if entry has been in cache for more than allowed, it gets deleted
-            if time.time() - entry["timestamp"] > CACHE_TIMEOUT:
+            if ((time.time() - entry["timestamp"]) > CACHE_TIMEOUT):
                 # If the entry is expired, simply delete it from cache
                 del self.store[url]
                 # Treat its expiration as a cache miss instead and return None
