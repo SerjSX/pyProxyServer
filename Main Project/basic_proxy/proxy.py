@@ -17,6 +17,64 @@ PROXY_PORT = 10000
 
 cache = ProxyCache()
 
+def fetch_from_server(client_socket, method, host, port, path, cache_key):
+    #connect to target server as proxy (proxy becomes client here) since it didn't get a cache hit
+    server_socket = socket(AF_INET, SOCK_STREAM)
+    #use request's external host name and port
+    server_socket.connect((host, port))
+
+    #rebuild the parsed HTTP request
+    #this is done in order to change full URLs into simple resource requests (like index.html)
+    #since we're already connecting to external URL
+    forward_request = f"{method} {path} HTTP/1.1\r\nHost: {host}\r\nConnection: close\r\n\r\n"
+
+    log_request_forwarded(host)
+
+    #send request to external URL
+    server_socket.sendall(forward_request.encode())
+
+    # This variable is used to store the entire message for caching later.
+    cache_response = b""
+    total_size = 0
+
+    #receive response from external URL and forward back to client
+    while True:
+        #receive next packet from external URL
+        #we keep receiving in case response larger than buffer size
+        data = server_socket.recv(BUFFER_SIZE)
+        #keep listening until no more data is received (ex: server closed connection)
+        if len(data) == 0:
+            break
+
+        total_size += len(data)
+
+        # Logging the received response batch
+        log_response_received(total_size)
+
+        try:
+            #send current packet back to client
+            client_socket.sendall(data)
+        except (BrokenPipeError, ConnectionResetError, ConnectionAbortedError):
+            print("Client disconnected while sending response")
+            break
+        #prepare cache variable to store in cache dictionary
+        cache_response += data
+
+    log_response_sent_back()
+
+    # Adds the response received to cache
+    if cache_response:
+        cache.set(cache_key, cache_response)
+
+    status_code, status = parse_response_status_line(cache_response)
+
+    #call logger response method
+    log_response(status_code, status, total_size, "miss")
+
+    #close current connection after response has been fully received
+    server_socket.close()
+
+
 def handle_client(client_socket, client_address):
     #this will be used to calculate total time taken from request to response
     start_time = time.time()
@@ -72,62 +130,8 @@ def handle_client(client_socket, client_address):
             log_response(status_code, status, len(cache_result), "hit")
             log_total_time(start_time)
             return
-
-        #connect to target server as proxy (proxy becomes client here) since it didn't get a cache hit
-        server_socket = socket(AF_INET, SOCK_STREAM)
-        #use request's external host name and port
-        server_socket.connect((host, port))
-
-        #rebuild the parsed HTTP request
-        #this is done in order to change full URLs into simple resource requests (like index.html)
-        #since we're already connecting to external URL
-        forward_request = f"{method} {path} HTTP/1.1\r\nHost: {host}\r\nConnection: close\r\n\r\n"
-
-        log_request_forwarded(host)
-
-        #send request to external URL
-        server_socket.sendall(forward_request.encode())
-
-        # This variable is used to store the entire message for caching later.
-        cache_response = b""
-        total_size = 0
-
-        #receive response from external URL and forward back to client
-        while True:
-            #receive next packet from external URL
-            #we keep receiving in case response larger than buffer size
-            data = server_socket.recv(BUFFER_SIZE)
-            #keep listening until no more data is received (ex: server closed connection)
-            if len(data) == 0:
-                break
-
-            total_size += len(data)
-
-            # Logging the received response batch
-            log_response_received(total_size)
-
-            try:
-                #send current packet back to client
-                client_socket.sendall(data)
-            except (BrokenPipeError, ConnectionResetError, ConnectionAbortedError):
-                print("Client disconnected while sending response")
-                break
-            #prepare cache variable to store in cache dictionary
-            cache_response += data
-
-        log_response_sent_back()
-
-        # Adds the response received to cache
-        if cache_response:
-            cache.set(cache_key, cache_response)
-
-        status_code, status = parse_response_status_line(cache_response)
-
-        #call logger response method
-        log_response(status_code, status, total_size, "miss")
-
-        #close current connection after response has been fully received
-        server_socket.close()
+        else: 
+            fetch_from_server(client_socket, method, host, port, path, cache_key)
 
     #catch connection or parsing errors to prevent crashes
     except Exception as e:
