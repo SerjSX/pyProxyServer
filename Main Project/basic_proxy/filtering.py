@@ -1,6 +1,6 @@
 # Hosts blocked.
 HOSTS_BLACKLIST = {
-    "example.com"
+    # "example.com"
 }
 
 # IP addresses blocked.

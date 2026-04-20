@@ -10,11 +10,13 @@ from filtering import (is_host_blocked, is_address_blocked)
 import threading
 from proxy_cache import ProxyCache
 import time
+from logger import init_logger
 
 #standard buffer size 4KB, good enough for packets+memory (could be more or less)
 BUFFER_SIZE = 4096
 PROXY_PORT = 10000
 
+init_logger()
 cache = ProxyCache()
 
 def fetch_from_server(client_socket, method, host, port, path, cache_key):
@@ -69,7 +71,7 @@ def fetch_from_server(client_socket, method, host, port, path, cache_key):
     status_code, status = parse_response_status_line(cache_response)
 
     #call logger response method
-    log_response(status_code, status, total_size, "miss")
+    log_response(status_code, status, total_size)
 
     #close current connection after response has been fully received
     server_socket.close()
@@ -116,7 +118,7 @@ def handle_client(client_socket, client_address):
             return
 
         # Forms the url to check if it exists in cache already, and to use it later to add to cache.
-        cache_key = host + path
+        cache_key = f"{host}:{port}{path}"
 
         # call logger request method
         log_request(method, path, host, headers)
@@ -127,7 +129,7 @@ def handle_client(client_socket, client_address):
             # If it's found stored in cache, then it sends back the cached response to the client
             client_socket.sendall(cache_result)
             status_code, status = parse_response_status_line(cache_result)
-            log_response(status_code, status, len(cache_result), "hit")
+            log_response(status_code, status, len(cache_result))
             log_total_time(start_time)
             return
         else: 
