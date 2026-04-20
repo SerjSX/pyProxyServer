@@ -4,9 +4,9 @@ from http_parser import parse_http_request, parse_response_status_line
 from logger import (log_request, log_response, log_request_received,
                     log_rejected_method, log_total_time, log_request_forwarded,
                     log_response_received, log_response_sent_back,
-                    log_blocked_host, log_blocked_address)
+                    log_blocked_host, log_blocked_address,
+                    format_forbidden)
 from filtering import (is_host_blocked, is_address_blocked)
-from response_text_util import (format_forbidden)
 import threading
 from proxy_cache import ProxyCache
 import time
@@ -104,7 +104,7 @@ def handle_client(client_socket, client_address):
         # checking if the host that the client is trying to access to is blacklisted or not.
         # If it is, we return a 403 HTTP message and log the attempt to request the host.
         if is_host_blocked(host):
-            client_socket.sendall(format_forbidden(b"Access denied by proxy. You cannot request this host as its blacklisted.\r\n"))
+            client_socket.sendall(format_forbidden(b"Access denied by proxy. You cannot request this host as it is blacklisted.\r\n"))
             log_blocked_host()
             return
 
@@ -170,7 +170,7 @@ def start_proxy():
         client_socket, client_address = server_socket.accept()
 
         # Checking if the client's IP address is blacklisted or no, if it is then it does not proceed with the request.
-        # Sends a 403 HTTP respone back and closes the connection
+        # Sends a 403 HTTP response back and closes the connection
         if is_address_blocked(client_address[0]):
             client_socket.sendall(format_forbidden(b"Access denied by proxy. Your address is blacklisted, contact the developers if needed.\r\n"))
             log_blocked_address(client_address[0])

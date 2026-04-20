@@ -55,3 +55,11 @@ def log_blocked_host():
 
 def log_blocked_address(client_ip):
     print(f"[{datetime.datetime.now()}] Blocked the client from requesting anything since their address is blacklisted: {client_ip}")
+
+def format_forbidden(body):
+    return (b"HTTP/1.0 403 Forbidden\r\n"
+              b"Content-Type: text/plain; charset=utf-8\r\n"
+            + f"Content-Length: {len(body)}\r\n".encode()
+            + b"Connection: close\r\n"
+            + b"\r\n"
+            + body)
