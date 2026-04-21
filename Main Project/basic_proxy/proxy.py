@@ -1,16 +1,17 @@
+import threading
+import time
 from socket import *
 
+from CacheStats import CacheStats
+from filtering import (is_host_blocked, is_address_blocked)
 from http_parser import parse_http_request, parse_response_status_line
+from logger import init_logger
 from logger import (log_request, log_response, log_request_received,
-                    log_rejected_method, log_total_time, log_request_forwarded,
+                    log_rejected_method, log_request_forwarded,
                     log_response_received, log_response_sent_back,
                     log_blocked_host, log_blocked_address,
                     format_forbidden)
-from filtering import (is_host_blocked, is_address_blocked)
-import threading
 from proxy_cache import ProxyCache
-import time
-from logger import init_logger
 
 #standard buffer size 4KB, good enough for packets+memory (could be more or less)
 BUFFER_SIZE = 4096
@@ -18,6 +19,7 @@ PROXY_PORT = 10000
 
 init_logger()
 cache = ProxyCache()
+stats = CacheStats()
 
 def fetch_from_server(client_socket, method, host, port, path, cache_key):
     #connect to target server as proxy (proxy becomes client here) since it didn't get a cache hit
@@ -129,11 +131,13 @@ def handle_client(client_socket, client_address):
             # If it's found stored in cache, then it sends back the cached response to the client
             client_socket.sendall(cache_result)
             status_code, status = parse_response_status_line(cache_result)
+            stats.record_hit(time.time() - start_time)
             log_response(status_code, status, len(cache_result))
-            log_total_time(start_time)
+            stats.log_summary()
             return
-        else: 
+        else:
             fetch_from_server(client_socket, method, host, port, path, cache_key)
+            stats.record_miss(time.time() - start_time)
 
     #catch connection or parsing errors to prevent crashes
     except Exception as e:
@@ -146,7 +150,7 @@ def handle_client(client_socket, client_address):
     finally:
         client_socket.close()
 
-    log_total_time(start_time)
+    stats.log_summary()
 
 
 def start_proxy():

@@ -68,9 +68,10 @@ def log_rejected_method(method):
     # If method is different from GET
     write_log(f"Rejected method: {method}")
 
-def log_total_time(start_time):
-    # Log the total time it took from receiving the request till the connection is closed
-    write_log(f"Total time taken: {time.time() - start_time}\n\n")
+#Method no longer used (time recorded using CacheStats)
+# def log_total_time(start_time):
+#     # Log the total time it took from receiving the request till the connection is closed
+#     write_log(f"Total time taken: {time.time() - start_time}\n\n")
 
 def log_request_forwarded(host):
     # Log that we are now sending request to external URL with timestamp
