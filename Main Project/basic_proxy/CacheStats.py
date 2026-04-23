@@ -24,7 +24,7 @@ class CacheStats:
     def hit_over_miss_time(self):
         hit_avg = self.avg_hit_time()
         miss_avg = self.avg_miss_time()
-        return miss_avg / hit_avg if hit_avg else float('inf')
+        return f"{miss_avg / hit_avg}x" if hit_avg else str('No hits recorded')
 
     def log_summary(self):
         write_log("---- Performance Summary ----")
@@ -33,4 +33,4 @@ class CacheStats:
         write_log(f"Total Misses: {self.TOTAL_MISSES}\n")
         write_log(f"Average Miss Time: {self.avg_miss_time():.4f} ms")
         write_log(f"Average Hit Time: {self.avg_hit_time():.4f} ms\n")
-        write_log(f"Speedup Factor: ~{self.hit_over_miss_time():.2f}x\n\n")
+        write_log(f"Speedup Factor: ~{self.hit_over_miss_time():.2f}\n\n")
