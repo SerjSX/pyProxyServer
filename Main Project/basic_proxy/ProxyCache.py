@@ -33,6 +33,11 @@ class ProxyCache:
             if url not in self.store:
                 log_cache_miss(url)
                 return None # miss occurs, not in the cache dict
+
+            # Else it returns the data and timestamp stored in cache
+            entry = self.store[url]
+            data = entry["data"]
+            timestamp = entry["timestamp"]
             
             # Check expiration, if entry has been in cache for more than allowed, it gets deleted
             if (time.time() - timestamp) > CACHE_TIMEOUT:
@@ -43,10 +48,6 @@ class ProxyCache:
                 return None
 
             log_cache_hit(url)
-            # Else it returns the data and timestamp stored in cache
-            entry = self.store[url]
-            data = entry["data"]
-            timestamp = entry["timestamp"]
 
             # Move to end of cache, make as most recently used
             self.store.move_to_end(url)

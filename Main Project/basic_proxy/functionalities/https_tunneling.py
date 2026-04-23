@@ -14,7 +14,7 @@ def handle_tunnel(client_socket, host, port):
 
         # We tell the browser that the tunnel is ready. This is the last thing that our proxy does, the rest is 
         # between the server and the browser simultanously
-        client_socket.sendall(b"HTTP/1.0 200 Connection Established\r\n\r\n")
+        client_socket.sendall(b"HTTP/1.1 200 Connection Established\r\n\r\n")
         log_connect_browser_established(host, port)
 
         # We remove the timeout for the server socket and the client socket so the tunnel stays open as long as needed

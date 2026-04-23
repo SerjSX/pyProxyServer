@@ -36,20 +36,36 @@ def write_log(message):
             except Exception as e:
                 print("Logging failed:", e)
 
-def log_request(method, path, host, headers):
-    write_log("---- REQUEST ----")
-    #show HTTP request line
-    write_log(f"{method} {path} HTTP/1.1")
-    #host name
-    write_log(f"Host: {host}")
 
-    #mainly shows browser used
+def log_request(client_address, method, host, port, headers, path=None):
+    write_log("\n---- REQUEST ----")
+    write_log(f"Time: {datetime.datetime.now()}")
+    write_log(f"Client: {client_address[0]}:{client_address[1]}")
+    write_log(f"Method: {method}")
+    write_log(f"Target: {host}:{port}")
+
+    if path:
+        write_log(f"Path: {path}")
     if "User-Agent" in headers:
         write_log(f"User-Agent: {headers['User-Agent']}")
 
-    #show request timestamp using datetime library
-    write_log(f"Time: {datetime.datetime.now()}")
-    write_log("-----------------\n")
+    write_log("----------------------")
+
+#NO LONGER IN USE
+# def log_request(method, path, host, headers):
+#     write_log("---- REQUEST ----")
+#     #show HTTP request line
+#     write_log(f"{method} {path} HTTP/1.1")
+#     #host name
+#     write_log(f"Host: {host}")
+#
+#     #mainly shows browser used
+#     if "User-Agent" in headers:
+#         write_log(f"User-Agent: {headers['User-Agent']}")
+#
+#     #show request timestamp using datetime library
+#     write_log(f"Time: {datetime.datetime.now()}")
+#     write_log("-----------------\n")
 
 
 def log_response(status_code, status, size):
@@ -60,13 +76,14 @@ def log_response(status_code, status, size):
     write_log(f"Time: {datetime.datetime.now()}")
     write_log("------------------\n")
 
+#METHODS NO LONGER IN USE
 # Logs that a CONNECT request was received.
-def log_connect_request(client_address, host, port):
-    write_log(f"\n[{datetime.datetime.now()}] CONNECT HTTPS request received from client {client_address[0]}:{client_address[1]} to: {host}:{port}")
-
-def log_request_received(client_address, host):
-    # Log that the request was successfully received with a timestamp
-    write_log(f"\n[{datetime.datetime.now()}] Request received from client {client_address[0]}:{client_address[1]} to host: {host}\n")
+# def log_connect_request(client_address, host, port):
+#     write_log(f"\n[{datetime.datetime.now()}] CONNECT HTTPS request received from client {client_address[0]}:{client_address[1]} to: {host}:{port}")
+#
+# def log_request_received(client_address, host):
+#     # Log that the request was successfully received with a timestamp
+#     write_log(f"\n[{datetime.datetime.now()}] Request received from client {client_address[0]}:{client_address[1]} to host: {host}\n")
 
 def log_rejected_method(method):
     # If method is different from GET

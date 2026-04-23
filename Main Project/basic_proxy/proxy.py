@@ -6,11 +6,10 @@ from CacheStats import CacheStats
 from ProxyCache import ProxyCache
 from functionalities.filtering import (is_host_blocked, is_address_blocked, is_port_blocked)
 from functionalities.http_parser import parse_http_request, parse_response_status_line
-from functionalities.logger import (log_request, log_response, log_request_received,
-                    log_rejected_method, log_request_forwarded,
-                    log_response_received, log_response_sent_back,
-                    log_blocked_host, log_blocked_address, init_logger,
-                    log_connect_request, log_blocked_port)
+from functionalities.logger import (log_response, log_rejected_method, log_request_forwarded,
+                                    log_response_received, log_response_sent_back,
+                                    log_blocked_host, log_blocked_address, init_logger,
+                                    log_blocked_port, log_request, write_log)
 from functionalities.send_errors import send_error, send_forbidden
 from functionalities.https_tunneling import handle_tunnel
 
@@ -60,7 +59,7 @@ def fetch_from_server(client_socket, method, host, port, path, cache_key):
             #send current packet back to client
             client_socket.sendall(data)
         except (BrokenPipeError, ConnectionResetError, ConnectionAbortedError):
-            print("Client disconnected while sending response")
+            write_log("Client disconnected while sending response")
             break
         #prepare cache variable to store in cache dictionary
         cache_response += data
@@ -122,7 +121,7 @@ def handle_client(client_socket, client_address):
         # If the method is CONNECT then it's an HTTPS request - does NOT cache as proxy does not see what's being transfered 
         # between the server and the browser through the TCP tunnel opened by the proxy.
         if method == "CONNECT":
-            log_connect_request(client_address, host, port)
+            log_request(client_address, method, host, port, headers, path if method == "GET" else None)
 
             # target is "hostname:port", it's not the full URL
             handle_tunnel(client_socket, host, port)
@@ -131,13 +130,12 @@ def handle_client(client_socket, client_address):
         # If the method is GET, then it's an HTTP request.
         # Adjusts cache key to store in cache, sends to target server if not found in cache or gets response from the cache server.
         elif method == "GET":
-            log_request_received(client_address, host)
 
             # Forms the url to check if it exists in cache already, and to use it later to add to cache.
             cache_key = f"{host}:{port}{path}"
 
             # call logger request method
-            log_request(method, path, host, headers)
+            log_request(client_address, method, host, port, headers, path if method == "GET" else None)
 
             # Getting the cache based on the key variable; if none exists then it returns None
             cache_result = cache.get(cache_key)
@@ -162,7 +160,7 @@ def handle_client(client_socket, client_address):
 
     #catch connection or parsing errors to prevent crashes
     except Exception as e:
-        print("Error:", e)
+        write_log("Error:", e)
         try:
             send_error(client_socket, 500, "Internal Server Error")
         except:
@@ -188,7 +186,7 @@ def start_proxy():
     server_socket.listen(5)
 
 
-    print(f"Proxy running on port {PROXY_PORT}...")
+    write_log(f"Proxy running on port {PROXY_PORT}...")
 
     # constant listening to accept clients
     while True:
