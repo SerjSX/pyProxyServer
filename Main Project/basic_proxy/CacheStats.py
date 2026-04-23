@@ -1,4 +1,4 @@
-from logger import write_log
+from functionalities.logger import write_log
 
 class CacheStats:
     def __init__(self):

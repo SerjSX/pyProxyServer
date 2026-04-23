@@ -9,7 +9,7 @@ def parse_http_request(request):
         method, url, _ = request_line.split()
 
         #we're gonna handle only GET requests for now
-        if method != "GET":
+        if method not in ["GET", "CONNECT"]:
             return None
 
         headers = {}
@@ -27,14 +27,17 @@ def parse_http_request(request):
             #just keep host name and path
             url = url.replace("http://", "")
 
-        #only split once to get host name and path name separately
+        # only split once to get host name and path name separately
         parts = url.split("/", 1)
         host = parts[0]
-        #keep path empty if no path
+        #keep path empty if no path; this is only used for GET; it's ignored for CONNECT
         path = "/" + parts[1] if len(parts) > 1 else "/"
 
-        #default port for HTTP
-        port = 80
+        # setting the default ports based on the request method.
+        if method == "GET":
+            port = 80
+        elif method == "CONNECT":
+            port = 443
 
         #this is to get port if available in URL
         if ":" in host:

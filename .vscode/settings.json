@@ -1,0 +1,5 @@
+{
+    "python.analysis.extraPaths": [
+        "./Main Project/basic_proxy/functionalities"
+    ]
+}

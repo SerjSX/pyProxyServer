@@ -3,15 +3,16 @@ import time
 from socket import *
 
 from CacheStats import CacheStats
-from filtering import (is_host_blocked, is_address_blocked)
-from http_parser import parse_http_request, parse_response_status_line
-from logger import init_logger
-from logger import (log_request, log_response, log_request_received,
+from ProxyCache import ProxyCache
+from functionalities.filtering import (is_host_blocked, is_address_blocked, is_port_blocked)
+from functionalities.http_parser import parse_http_request, parse_response_status_line
+from functionalities.logger import (log_request, log_response, log_request_received,
                     log_rejected_method, log_request_forwarded,
                     log_response_received, log_response_sent_back,
-                    log_blocked_host, log_blocked_address,
-                    format_forbidden)
-from proxy_cache import ProxyCache
+                    log_blocked_host, log_blocked_address, init_logger,
+                    log_connect_request, log_blocked_port)
+from functionalities.send_errors import send_error, send_forbidden
+from functionalities.https_tunneling import handle_tunnel
 
 #standard buffer size 4KB, good enough for packets+memory (could be more or less)
 BUFFER_SIZE = 4096
@@ -84,6 +85,9 @@ def handle_client(client_socket, client_address):
     start_time = time.time()
 
     try:
+        # preventing thread usage if client connects but never sends data
+        client_socket.settimeout(5)
+        
         #.recv()=read bytes from TCP stream
         #.decode()=convert HTTP to string
         request = client_socket.recv(BUFFER_SIZE).decode()
@@ -97,53 +101,70 @@ def handle_client(client_socket, client_address):
 
         #standard HTTP requires proper response form to prevent crashing
         if not parsed:
-            client_socket.send(b"HTTP/1.1 400 Bad Request\r\n\r\n")
+            send_error(client_socket, 400, "Bad Request")
             return
 
         #assign each of the returned parsed values to a variable
         method, host, port, path, headers = parsed
 
-        log_request_received(client_address, host)
-
         # checking if the host that the client is trying to access to is blacklisted or not.
         # If it is, we return a 403 HTTP message and log the attempt to request the host.
         if is_host_blocked(host):
-            client_socket.sendall(format_forbidden(b"Access denied by proxy. You cannot request this host as it is blacklisted.\r\n"))
+            send_forbidden(client_socket, b"Access denied by proxy. You cannot request this host as it is blacklisted.\r\n")
             log_blocked_host()
             return
 
+        if is_port_blocked(port):
+            send_forbidden(client_socket, b"Access denied by proxy. You cannot request to this port number.\r\n")
+            log_blocked_port(port)
+            return
 
-        #Checking if the method is not GET first, then sending a proper error response
-        if method != "GET":
+        # If the method is CONNECT then it's an HTTPS request - does NOT cache as proxy does not see what's being transfered 
+        # between the server and the browser through the TCP tunnel opened by the proxy.
+        if method == "CONNECT":
+            log_connect_request(client_address, host, port)
+
+            # target is "hostname:port", it's not the full URL
+            handle_tunnel(client_socket, host, port)
+            return
+        
+        # If the method is GET, then it's an HTTP request.
+        # Adjusts cache key to store in cache, sends to target server if not found in cache or gets response from the cache server.
+        elif method == "GET":
+            log_request_received(client_address, host)
+
+            # Forms the url to check if it exists in cache already, and to use it later to add to cache.
+            cache_key = f"{host}:{port}{path}"
+
+            # call logger request method
+            log_request(method, path, host, headers)
+
+            # Getting the cache based on the key variable; if none exists then it returns None
+            cache_result = cache.get(cache_key)
+            if cache_result:
+                # If it's found stored in cache, then it sends back the cached response to the client
+                client_socket.sendall(cache_result)
+                status_code, status = parse_response_status_line(cache_result)
+                stats.record_hit(time.time() - start_time)
+                log_response(status_code, status, len(cache_result))
+                stats.log_summary()
+                return
+            else:
+                fetch_from_server(client_socket, method, host, port, path, cache_key)
+                stats.record_miss(time.time() - start_time)
+
+        # Any other method that's not GET or CONNECT is forbidden, so it sends a 405 response
+        else: 
             log_rejected_method(method)
-            client_socket.sendall(b"HTTP/1.1 405 Method Not Allowed\r\n\r\n")
+            send_error(client_socket, 405, "Method Not Allowed")
             return
-
-        # Forms the url to check if it exists in cache already, and to use it later to add to cache.
-        cache_key = f"{host}:{port}{path}"
-
-        # call logger request method
-        log_request(method, path, host, headers)
-
-        # Getting the cache based on the key variable; if none exists then it returns None
-        cache_result = cache.get(cache_key)
-        if cache_result:
-            # If it's found stored in cache, then it sends back the cached response to the client
-            client_socket.sendall(cache_result)
-            status_code, status = parse_response_status_line(cache_result)
-            stats.record_hit(time.time() - start_time)
-            log_response(status_code, status, len(cache_result))
-            stats.log_summary()
-            return
-        else:
-            fetch_from_server(client_socket, method, host, port, path, cache_key)
-            stats.record_miss(time.time() - start_time)
+        
 
     #catch connection or parsing errors to prevent crashes
     except Exception as e:
         print("Error:", e)
         try:
-            client_socket.sendall(b"HTTP/1.1 500 Internal Server Error\r\n\r\n")
+            send_error(client_socket, 500, "Internal Server Error")
         except:
             pass  # socket already closed, ignore
 
@@ -178,7 +199,7 @@ def start_proxy():
         # Checking if the client's IP address is blacklisted or no, if it is then it does not proceed with the request.
         # Sends a 403 HTTP response back and closes the connection
         if is_address_blocked(client_address[0]):
-            client_socket.sendall(format_forbidden(b"Access denied by proxy. Your address is blacklisted, contact the developers if needed.\r\n"))
+            send_forbidden(client_socket, b"Access denied by proxy. Your address is blacklisted, contact the developers if needed.\r\n")
             log_blocked_address(client_address[0])
             client_socket.close()
             continue

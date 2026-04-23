@@ -60,6 +60,10 @@ def log_response(status_code, status, size):
     write_log(f"Time: {datetime.datetime.now()}")
     write_log("------------------\n")
 
+# Logs that a CONNECT request was received.
+def log_connect_request(client_address, host, port):
+    write_log(f"\n[{datetime.datetime.now()}] CONNECT HTTPS request received from client {client_address[0]}:{client_address[1]} to: {host}:{port}")
+
 def log_request_received(client_address, host):
     # Log that the request was successfully received with a timestamp
     write_log(f"\n[{datetime.datetime.now()}] Request received from client {client_address[0]}:{client_address[1]} to host: {host}\n")
@@ -67,11 +71,6 @@ def log_request_received(client_address, host):
 def log_rejected_method(method):
     # If method is different from GET
     write_log(f"Rejected method: {method}")
-
-#Method no longer used (time recorded using CacheStats)
-# def log_total_time(start_time):
-#     # Log the total time it took from receiving the request till the connection is closed
-#     write_log(f"Total time taken: {time.time() - start_time}\n\n")
 
 def log_request_forwarded(host):
     # Log that we are now sending request to external URL with timestamp
@@ -85,11 +84,20 @@ def log_response_sent_back():
     # Log that we successfully sent response back to client with timestamp
     write_log(f"[{datetime.datetime.now()}] Response sent to client")
 
+def log_connect_browser_established(host, port):
+    write_log(f"[{datetime.datetime.now()}] Connection established with {host}:{port}; tunnel is ready.")
+
+def log_connect_tunnel_closed(host, port):
+    write_log(f"\n[{datetime.datetime.now()}] Tunnel closed for: {host}:{port}")
+
 def log_blocked_host():
     write_log(f"[{datetime.datetime.now()}] Blocked the request attempt since it's blacklisted.")
 
 def log_blocked_address(client_ip):
     write_log(f"[{datetime.datetime.now()}] Blocked the client from requesting anything since their address is blacklisted: {client_ip}")
+
+def log_blocked_port(port):
+    write_log(f"[{datetime.datetime.now()}] Blocked the request attempt to port {port} since it's blacklisted.")
 
 def log_cache_hit(url):
     write_log(f"[{datetime.datetime.now()}] Cache HIT: {url}")
@@ -102,11 +110,3 @@ def log_cache_lru(url):
 
 def log_cache_expired(url):
     write_log(f"[{datetime.datetime.now()}] Entry expired, removing: {url}")
-
-def format_forbidden(body):
-    return (b"HTTP/1.0 403 Forbidden\r\n"
-              b"Content-Type: text/plain; charset=utf-8\r\n"
-            + f"Content-Length: {len(body)}\r\n".encode()
-            + b"Connection: close\r\n"
-            + b"\r\n"
-            + body)

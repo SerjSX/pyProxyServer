@@ -1,7 +1,7 @@
 import threading 
 import time
 from collections import OrderedDict
-from logger import log_cache_miss, log_cache_hit, log_cache_lru, log_cache_expired
+from functionalities.logger import log_cache_miss, log_cache_hit, log_cache_lru, log_cache_expired
 
 """
 Class used to store the cached values in a dictionary.
