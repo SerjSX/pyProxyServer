@@ -1,3 +1,4 @@
+# Enter the ports you want blocked below. Anything starting with # is ignored.
 22
 25
 587

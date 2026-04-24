@@ -1,1 +1,2 @@
+# Enter the client IP addresses you want blocked below. Anything starting with # is ignored.
 #127.0.0.1

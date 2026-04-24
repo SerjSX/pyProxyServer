@@ -21,7 +21,7 @@ init_logger()
 cache = ProxyCache()
 stats = CacheStats()
 
-def fetch_from_server(client_socket, method, host, port, path, cache_key):
+def fetch_from_server(client_socket, client_address, method, host, port, path, cache_key):
     #connect to target server as proxy (proxy becomes client here) since it didn't get a cache hit
     server_socket = socket(AF_INET, SOCK_STREAM)
     #use request's external host name and port
@@ -53,7 +53,7 @@ def fetch_from_server(client_socket, method, host, port, path, cache_key):
         total_size += len(data)
 
         # Logging the received response batch
-        log_response_received(total_size)
+        log_response_received(host, total_size)
 
         try:
             #send current packet back to client
@@ -64,7 +64,7 @@ def fetch_from_server(client_socket, method, host, port, path, cache_key):
         #prepare cache variable to store in cache dictionary
         cache_response += data
 
-    log_response_sent_back()
+    log_response_sent_back(host, port, client_address)
 
     # Adds the response received to cache
     if cache_response:
@@ -84,9 +84,6 @@ def handle_client(client_socket, client_address):
     start_time = time.time()
 
     try:
-        # preventing thread usage if client connects but never sends data
-        client_socket.settimeout(5)
-        
         #.recv()=read bytes from TCP stream
         #.decode()=convert HTTP to string
         request = client_socket.recv(BUFFER_SIZE).decode()
@@ -110,7 +107,7 @@ def handle_client(client_socket, client_address):
         # If it is, we return a 403 HTTP message and log the attempt to request the host.
         if is_host_blocked(host):
             send_forbidden(client_socket, b"Access denied by proxy. You cannot request this host as it is blacklisted.\r\n")
-            log_blocked_host()
+            log_blocked_host(host)
             return
 
         if is_port_blocked(port):
@@ -148,7 +145,7 @@ def handle_client(client_socket, client_address):
                 stats.log_summary()
                 return
             else:
-                fetch_from_server(client_socket, method, host, port, path, cache_key)
+                fetch_from_server(client_socket, client_address, method, host, port, path, cache_key)
                 stats.record_miss(time.time() - start_time)
 
         # Any other method that's not GET or CONNECT is forbidden, so it sends a 405 response
@@ -160,7 +157,7 @@ def handle_client(client_socket, client_address):
 
     #catch connection or parsing errors to prevent crashes
     except Exception as e:
-        write_log("Error:", e)
+        write_log("Error:" + e)
         try:
             send_error(client_socket, 500, "Internal Server Error")
         except:

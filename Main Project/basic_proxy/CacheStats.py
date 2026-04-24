@@ -1,4 +1,5 @@
 from functionalities.logger import write_log
+from colorama import init, Fore, Style # type: ignore
 
 class CacheStats:
     def __init__(self):
@@ -27,10 +28,12 @@ class CacheStats:
         return f"{miss_avg / hit_avg}x" if hit_avg else "No hits recorded"
 
     def log_summary(self):
-        write_log("---- Performance Summary ----")
-        write_log(f"Total Requests: {self.TOTAL_HITS + self.TOTAL_MISSES}")
-        write_log(f"Total Hits: {self.TOTAL_HITS}")
-        write_log(f"Total Misses: {self.TOTAL_MISSES}\n")
-        write_log(f"Average Miss Time: {self.avg_miss_time():.4f} ms")
-        write_log(f"Average Hit Time: {self.avg_hit_time():.4f} ms\n")
-        write_log(f"Speedup Factor: ~{self.hit_over_miss_time()}\n\n")
+        write_log(f"{Fore.CYAN + Style.BRIGHT}---- Performance Summary ----")
+        write_log(f"{Fore.MAGENTA}Total Requests: {self.TOTAL_HITS + self.TOTAL_MISSES}")
+        write_log(f"{Fore.GREEN}Total Hits: {self.TOTAL_HITS}")
+        write_log(f"{Fore.RED}Total Misses: {self.TOTAL_MISSES}\n")
+        write_log(f"{Fore.RED + Style.BRIGHT}Average Miss Time: {self.avg_miss_time():.4f} ms")
+        write_log(f"{Fore.GREEN + Style.BRIGHT}Average Hit Time: {self.avg_hit_time():.4f} ms\n")
+        write_log(f"{Fore.MAGENTA + Style.BRIGHT}Speedup Factor: ~{self.hit_over_miss_time()}")
+        write_log(f"{Fore.CYAN + Style.BRIGHT}-----------------------------\n")
+

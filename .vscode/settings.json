@@ -1,5 +1,6 @@
 {
     "python.analysis.extraPaths": [
         "./Main Project/basic_proxy/functionalities"
-    ]
+    ],
+    "python-envs.defaultEnvManager": "ms-python.python:system"
 }
