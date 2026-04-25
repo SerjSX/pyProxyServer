@@ -24,7 +24,7 @@ class ProxyCache:
         self.cache_lock = threading.Lock()
 
         # This limits the number of entries we can add to the cache
-        self.max_size = 1
+        self.max_size = 10
 
     def get(self, url):
         # Acquiring lock so someone else doesn't touch the dict at the same time
