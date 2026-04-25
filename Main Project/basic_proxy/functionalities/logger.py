@@ -129,8 +129,8 @@ def log_cache_miss(url):
     write_log(f"{COLORS['time']}[{datetime.datetime.now()}] {COLORS['MISS']}Cache MISS: {url}")
 
 def log_cache_lru(url):
-    write_log(f"{COLORS['time']}[{datetime.datetime.now()}] Cache full, least used entry removed from cache: {url}")
+    write_log(f"{COLORS['time']}[{datetime.datetime.now()}] {COLORS['MISS']}Cache full, least used entry removed from cache: {url}")
 
 def log_cache_expired(url):
-    write_log(f"{COLORS['time']}[{datetime.datetime.now()}] Entry expired, removing: {url}")
+    write_log(f"{COLORS['time']}[{datetime.datetime.now()}] {COLORS['MISS']}Entry expired, removing: {url}")
 

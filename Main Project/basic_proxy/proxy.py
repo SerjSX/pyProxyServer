@@ -5,7 +5,7 @@ from socket import *
 from CacheStats import CacheStats
 from ProxyCache import ProxyCache
 from functionalities.filtering import (is_host_blocked, is_address_blocked, is_port_blocked)
-from functionalities.http_parser import parse_http_request, parse_response_status_line
+from functionalities.http_parser import parse_request, parse_response_status_line
 from functionalities.logger import (log_response, log_rejected_method, log_request_forwarded,
                                     log_response_received, log_response_sent_back,
                                     log_blocked_host, log_blocked_address, init_logger,
@@ -93,7 +93,7 @@ def handle_client(client_socket, client_address):
             return
 
         #call http_parser method
-        parsed = parse_http_request(request)
+        parsed = parse_request(request)
 
         #standard HTTP requires proper response form to prevent crashing
         if not parsed:

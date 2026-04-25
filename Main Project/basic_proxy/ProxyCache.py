@@ -24,7 +24,7 @@ class ProxyCache:
         self.cache_lock = threading.Lock()
 
         # This limits the number of entries we can add to the cache
-        self.max_size = 10
+        self.max_size = 1
 
     def get(self, url):
         # Acquiring lock so someone else doesn't touch the dict at the same time
@@ -66,7 +66,7 @@ class ProxyCache:
             elif len(self.store) >= self.max_size:
                 # If full, pop/delete the oldest entry (first in dict, oldest) from cache and keep track of old url
                 old_url, _ = self.store.popitem(last=False)
-                log_cache_miss(old_url)
+                log_cache_lru(old_url)
 
             # Insert new entry as most recently used (last in dict)
             # key=URL(host+path) => {"data": response, "timestamp": added time in float}

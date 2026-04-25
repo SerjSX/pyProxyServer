@@ -1,4 +1,4 @@
-def parse_http_request(request):
+def parse_request(request):
     try:
         #put each line from the request as an element of a list
         lines = request.split("\r\n")
