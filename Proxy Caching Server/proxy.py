@@ -106,6 +106,11 @@ def handle_client(client_socket, client_address):
         #call http_parser method to parse the request of the user and get the method, host, port, path and remaining headers
         parsed = parse_request(request)
 
+        # if parse_reqeust returned NA then it means that the request is not GET or CONNECT; which isn't supported by the proxy server
+        if parsed == "NA":
+            send_error(client_socket, 405, "Method Not Allowed")
+            return
+
         #standard HTTP requires proper response form to prevent crashing, if the returned value is None from
         # parse_request then there's an issue with the formatting; it sends a 400 Bad Request response.
         if not parsed:
@@ -182,7 +187,7 @@ def handle_client(client_socket, client_address):
 
     #catch connection or parsing errors to prevent crashes
     except Exception as e:
-        write_log("Error:" + e)
+        write_log("Error:" + str(e))
         try:
             send_error(client_socket, 500, "Internal Server Error")
         except:
@@ -199,7 +204,6 @@ def start_proxy():
     # Resets the TIME_WAIT after stopping the server so it immediately starts again.
     server_socket.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
 
-    # ''=listen to localhost
     server_socket.bind(('', PROXY_PORT))
 
     # 5 means max queued connections are 5, can be more or less

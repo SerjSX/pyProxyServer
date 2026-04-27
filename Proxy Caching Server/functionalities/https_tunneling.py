@@ -37,7 +37,7 @@ def handle_tunnel(client_socket, host, port):
     except (ConnectionRefusedError, OSError) as e:
         send_error(client_socket, 502, "Bad Gateway")
     
-    except socket.timeout:
+    except timeout:
         send_error(client_socket, 504, "Gateway Timeout")
     
     finally:

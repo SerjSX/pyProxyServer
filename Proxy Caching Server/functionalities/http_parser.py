@@ -15,7 +15,7 @@ def parse_request(request):
 
         #we're going to handle only GET and CONNECT requests, anything else the method returns a None.
         if method not in ["GET", "CONNECT"]:
-            return None
+            return "NA"
 
         headers = {} # We store the remaining headers in this dictionary
 
