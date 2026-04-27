@@ -4,14 +4,23 @@ import re
 import threading
 from colorama import init, Fore, Style # type: ignore
 
+"""
+This module includes methods to log both into a log file with a unique name based on the timestamp and printing to the 
+terminal.
+
+Uses colorama library to add colors to the terminal prints, making it more visually appealing.
+"""
+
 # enabling ANSI codes on windows
 init(autoreset=True) # autoreset-True means each color resets automatically after use
 
 # Matches ANSI escape sequences so file logs stay plain text.
 ANSI_ESCAPE_RE = re.compile(r"\x1B\[[0-?]*[ -/]*[@-~]")
 
+# Used to reset effects before applying a new color/style, because the colors add on top of each other.
 reset_effects = Fore.RESET + Style.RESET_ALL
 
+# Scores the colors and styles for different keywords.
 COLORS = {
     'time': Fore.WHITE + Style.DIM,
     'header': Fore.MAGENTA + Style.BRIGHT,
@@ -29,6 +38,7 @@ COLORS = {
     'path': Fore.LIGHTBLACK_EX,
     'status': Fore.LIGHTCYAN_EX,
 }
+
 
 LOG_FILE = None
 log_lock = threading.Lock()
@@ -67,6 +77,7 @@ def write_log(message):
                 print("Logging failed:", e)
 
 
+# Logs received client requests
 def log_request(client_address, method, host, port, headers, path=None):
     method_color = COLORS.get(method, Fore.WHITE)
 
@@ -83,6 +94,7 @@ def log_request(client_address, method, host, port, headers, path=None):
 
     write_log(f"{COLORS['header']}---------------------\n")
 
+# Logs the response received from server
 def log_response(status_code, status, size):
     write_log(f"\n{COLORS['header']}---- RESPONSE ----")
     write_log(f"{COLORS['status']}Status: {status_code} {status}")
@@ -90,6 +102,7 @@ def log_response(status_code, status, size):
     #show response timestamp
     write_log(f"{COLORS['time']}Time: {datetime.datetime.now()}")
     write_log(f"{COLORS['header']}------------------\n")
+
 
 def log_rejected_method(method):
     # If method is different from GET
