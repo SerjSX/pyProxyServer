@@ -3,6 +3,16 @@ from socket import *
 from .send_errors import send_error
 from .logger import log_connect_tunnel_closed, log_connect_browser_established
 
+"""
+This module includes methods that handle HTTPS requests by opening a raw TCP connection to the server, and allowing the client
+to talk to that server immediately in a full-duplex connection. 
+    - handle_tunnel(client_socket, host, port): the primary method that's called from proxy.py.
+    - _run_relay(client_socket, server_socket): called from handle_tunnel() to create two threads of two connections: one from the client's socket to the
+        server's, and the second from the server's socket to the client's socket.
+    - _relay_one_direction(src_socket, dst_socket): called from _run_relay() to send data from client to server or vice versa per each threads till a FIN is initialized.
+"""
+
+# The main method called from proxy.py if it's a CONNECT request 
 def handle_tunnel(client_socket, host, port):
     server_socket = None
 
@@ -15,12 +25,13 @@ def handle_tunnel(client_socket, host, port):
         # We tell the browser that the tunnel is ready. This is the last thing that our proxy does, the rest is 
         # between the server and the browser simultanously
         client_socket.sendall(b"HTTP/1.1 200 Connection Established\r\n\r\n")
-        log_connect_browser_established(host, port)
+        log_connect_browser_established(host, port) 
 
         # We remove the timeout for the server socket and the client socket so the tunnel stays open as long as needed
         server_socket.settimeout(None)
         client_socket.settimeout(None)
 
+        # We create the two threads that open the full-duplex connection between the client and the server
         _run_relay(client_socket, server_socket)
     
     except (ConnectionRefusedError, OSError) as e:
@@ -38,7 +49,7 @@ def handle_tunnel(client_socket, host, port):
                 except Exception:
                     pass
 
-        log_connect_tunnel_closed(host, port)
+        log_connect_tunnel_closed(host, port) # logging that the tunnel is closed
 
 
 # Copies bytes from the passed source socket to the passed destination socket until connection closes.

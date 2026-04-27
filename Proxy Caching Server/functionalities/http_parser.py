@@ -1,3 +1,8 @@
+"""
+This module is responsible has methods used to parse requests and responses.
+"""
+
+# Used for parsing a request header
 def parse_request(request):
     try:
         #put each line from the request as an element of a list
@@ -8,13 +13,13 @@ def parse_request(request):
         #extract from the request line each individual part into a separate variable
         method, url, _ = request_line.split()
 
-        #we're gonna handle only GET requests for now
+        #we're going to handle only GET and CONNECT requests, anything else the method returns a None.
         if method not in ["GET", "CONNECT"]:
             return None
 
-        headers = {}
+        headers = {} # We store the remaining headers in this dictionary
 
-        for line in lines[1:]:
+        for line in lines[1:]: 
             #if line (other than request line) contains ": "
             #something like 'Host: localhost:10000'
             if ": " in line:
@@ -39,17 +44,18 @@ def parse_request(request):
         elif method == "CONNECT":
             port = 443
 
-        #this is to get port if available in URL
+        #this is to get and set the port if available in URL
         if ":" in host:
             host, port = host.split(":")
             port = int(port)
 
+        # returns the data as separate variables
         return method, host, port, path, headers
 
-    except:
+    except: # any other issue then it returns None
         return None
 
-#this is a method to get the header line of the response
+# Used for parsing the status line of the response
 def parse_response_status_line(response_bytes):
     try:
         #store the response in a variable
@@ -59,6 +65,7 @@ def parse_response_status_line(response_bytes):
         #split twice to get status code, status and size of response individually
         parts = first_line.split(" ", 2)
 
+        # The length of the part should be greater than or equal to 2, or else it doesn't return a proper status_code and status
         if len(parts) >= 2:
             status_code = parts[1]
             status = parts[2] if len(parts) > 2 else ""

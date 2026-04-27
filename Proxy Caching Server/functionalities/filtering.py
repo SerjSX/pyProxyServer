@@ -1,6 +1,15 @@
 from pathlib import Path
 import threading
 
+"""
+This module is responsible for loading blacklists of hosts, addresses, and ports. Also provides helper methods to know if
+a host/address/port is blacklisted or no.
+
+It also is responsible for loading the blacklisted text files if they are modified as the server is running; so no need to restart
+the server.
+"""
+
+# Initializing the base directory to have a proper file path for storing the blacklist text files.
 BASE_DIR = Path(__file__).resolve().parent
 BLACKLIST_DIR = BASE_DIR / "blacklists"
 
@@ -11,7 +20,8 @@ PORTS_FILE = BLACKLIST_DIR / "ports.txt"
 # Thread lock used to avoid unsafe file checks
 LOCK = threading.Lock()
 
-# Caches + last modified times
+# Caches + last modified times to track if a blacklist text file has been updated or not compared to the
+# last modified date added when trying to check if a host/port/clientIP is blacklisted or no.
 HOSTS_CACHE = set()
 HOSTS_LAST_MODIFIED = 0
 
@@ -41,12 +51,12 @@ def read_lines(file_path):
     return lines
 
 
-# Hosts section
+# Loads the hosts blacklist from the file
 def load_hosts():
     # Adds each line from the file into the set (sets don't include duplicates)
     return {line.lower() for line in read_lines(HOSTS_FILE)}
 
-
+# gets the hosts blacklisted and updates if the file has been modified after the last modified stored timestamp
 def get_hosts_blacklist():
     global HOSTS_CACHE, HOSTS_LAST_MODIFIED
 
@@ -136,6 +146,8 @@ def get_ports_blacklist():
     return PORTS_CACHE
 
 
+# The below three methods are used by proxy.py to check if a host/address/port is blacklisted or no.
+# Anything above is used by these below methods as helpers.
 def is_host_blocked(host):
     if not host:
         return False
