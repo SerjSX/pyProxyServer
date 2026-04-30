@@ -1,5 +1,5 @@
 # Enter the hosts you want blocked below. Anything starting with # is ignored.
-www.google.com
+google.com
 #example.com
 firefox-settings-attachments.cdn.mozilla.net
 push.services.mozilla.com

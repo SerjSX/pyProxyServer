@@ -31,6 +31,8 @@ def parse_request(request):
         if "http://" in url:
             #just keep host name and path
             url = url.replace("http://", "")
+            if "www." in url:
+                url = url.replace("www.", "")
 
         # only split once to get host name and path name separately
         parts = url.split("/", 1)
