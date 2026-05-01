@@ -54,7 +54,8 @@ def read_lines(file_path):
 # Loads the hosts blacklist from the file
 def load_hosts():
     # Adds each line from the file into the set (sets don't include duplicates)
-    return {line.lower() for line in read_lines(HOSTS_FILE)}
+    # Also normalize by removing www. prefix for consistent matching
+    return {line.lower().replace("www.", "", 1) for line in read_lines(HOSTS_FILE)}
 
 # gets the hosts blacklisted and updates if the file has been modified after the last modified stored timestamp
 def get_hosts_blacklist():
@@ -151,7 +152,9 @@ def get_ports_blacklist():
 def is_host_blocked(host):
     if not host:
         return False
-    return host.lower() in get_hosts_blacklist()
+    # To ensure all cases are blocked.
+    normalized_host = host.lower().replace("www.", "", 1)
+    return normalized_host in get_hosts_blacklist()
 
 
 def is_address_blocked(address):
